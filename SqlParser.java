@@ -33,7 +33,10 @@ public class SqlParser {
             if (c == '(' && !quotes) level++;
             if (c == ')' && !quotes) level--;
             current.append(c);
-            if (level == 0 && c == ')' && !quotes) { groups.add(current.toString()); current.setLength(0); }
+            if (level == 0 && c == ')' && !quotes) {
+                groups.add(current.toString());
+                current.setLength(0);
+            }
         }
         for (String group : groups) {
             String text = group.trim();
@@ -56,7 +59,7 @@ public class SqlParser {
     }
     private Query parseUpdate(String sql) {
         Query query = new Query(Query.Type.UPDATE);
-        Pattern pattern = Pattern.compile("UPDATE\\s+(\\w+)\\s+" + "SET\\s+(\\w+)\\s*=\\s*(.+?)" + "(?:\\s+WHERE\\s+(.+))?", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("UPDATE\\s+(\\w+)\\s+SET\\s+(\\w+)\\s*=\\s*(.+?)(?:\\s+WHERE\\s+(.+))?", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(sql);
         if (!matcher.matches()) throw new IllegalArgumentException("Неверный UPDATE");
         query.setTableName(matcher.group(1));
@@ -67,13 +70,16 @@ public class SqlParser {
     }
     private Query parseDelete(String sql) {
         Query query = new Query(Query.Type.DELETE);
-        Pattern pattern = Pattern.compile("DELETE\\s+FROM\\s+(\\w+)" + "(?:\\s+WHERE\\s+(.+))?", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("DELETE\\s+FROM\\s+(\\w+)(?:\\s+WHERE\\s+(.+))?", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(sql);
         if (!matcher.matches()) throw new IllegalArgumentException("Неверный DELETE");
+
         query.setTableName(matcher.group(1));
         if (matcher.group(2) != null) query.setCondition(parseCondition(matcher.group(2)));
+
         return query;
     }
+
     private Query parseCreateTable(String sql) {
         Query query = new Query(Query.Type.CREATE_TABLE);
         Pattern pattern = Pattern.compile("CREATE\\s+TABLE\\s+(\\w+)\\s*\\((.+)\\)", Pattern.CASE_INSENSITIVE);
@@ -93,7 +99,7 @@ public class SqlParser {
     }
     private Query parseCreateIndex(String sql) {
         Query query = new Query(Query.Type.CREATE_INDEX);
-        Pattern pattern = Pattern.compile("CREATE\\s+INDEX\\s+(\\w+)" + "\\s+ON\\s+(\\w+)\\s*\\((\\w+)\\)", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("CREATE\\s+INDEX\\s+(\\w+)\\s+ON\\s+(\\w+)\\s*\\((\\w+)\\)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(sql);
         if (!matcher.matches()) throw new IllegalArgumentException("Неверный CREATE INDEX");
         query.setIndexName(matcher.group(1));
@@ -105,16 +111,10 @@ public class SqlParser {
         Pattern pattern = Pattern.compile("(\\w+)\\s*(>=|<=|!=|=|>|<)\\s*(.+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text.trim());
         if (!matcher.matches()) throw new IllegalArgumentException("Неверное условие WHERE");
-        return new Condition(
-                matcher.group(1),
-                matcher.group(2),
-                removeQuotes(matcher.group(3).trim())
-        );
+        return new Condition(matcher.group(1), matcher.group(2), removeQuotes(matcher.group(3).trim()));
     }
     private String removeQuotes(String value) {
-        if (value.length() >= 2 && value.startsWith("'") && value.endsWith("'")) {
-            return value.substring(1, value.length() - 1);
-        }
+        if (value.length() >= 2 && value.startsWith("'") && value.endsWith("'")) return value.substring(1, value.length() - 1);
         return value;
     }
     private List<String> splitComma(String text) {
@@ -122,21 +122,26 @@ public class SqlParser {
         StringBuilder current = new StringBuilder();
         boolean quotes = false;
         for (char c : text.toCharArray()) {
-    if (c == '\'') quotes = !quotes;
-    if (c == ',' && !quotes) { result.add(current.toString().trim()); current.setLength(0); } 
-    else 
-        current.append(c);
-}
+            if (c == '\'') quotes = !quotes;
+            if (c == ',' && !quotes) {
+                result.add(current.toString().trim());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
         if (current.length() > 0) result.add(current.toString().trim());
         return result;
     }
-    public Object convertValue(String value, DataType type) value = removeQuotes(value.trim());
-switch (type) {
-    case INT: return Integer.parseInt(value);
-    case DOUBLE: return Double.parseDouble(value);
-    case STRING: return value;
-    case DATE: return java.time.LocalDate.parse(value);
-    case BOOLEAN: return Boolean.parseBoolean(value);
-    default: throw new IllegalArgumentException("Неизвестный тип данных");
-}
+    public Object convertValue(String value, DataType type) {
+        value = removeQuotes(value.trim());
+        switch (type) {
+            case INT -> { return Integer.parseInt(value); }
+            case DOUBLE -> { return Double.parseDouble(value); }
+            case STRING -> { return value; }
+            case DATE -> { return java.time.LocalDate.parse(value); }
+            case BOOLEAN -> { return Boolean.parseBoolean(value); }
+            default -> throw new IllegalArgumentException("Неизвестный тип данных");
+        }
+    }
 }
